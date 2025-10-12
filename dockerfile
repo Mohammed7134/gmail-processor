@@ -1,28 +1,27 @@
-# Use official OpenJDK 17 image
+# -------- Build Stage --------
+FROM gradle:8.3-jdk17 AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy Gradle build files and source code
+COPY build.gradle settings.gradle ./
+COPY src/ src/
+
+# Build the project (outputs jar in build/libs/)
+RUN gradle clean build --no-daemon
+
+# -------- Runtime Stage --------
 FROM openjdk:17-jdk-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy Gradle wrapper scripts and wrapper jar
-COPY gradlew .
-COPY gradle/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.jar
-COPY gradle/wrapper/gradle-wrapper.properties gradle/wrapper/gradle-wrapper.properties
+# Copy the built jar from the builder stage
+COPY --from=builder /app/build/libs/*.jar app.jar
 
-# Copy build files first to leverage Docker caching
-COPY build.gradle settings.gradle ./
-
-# Copy source code
-COPY src/ src/
-
-# Make Gradle wrapper executable
-RUN chmod +x gradlew
-
-# Build the project
-RUN ./gradlew clean build --no-daemon
-
-# Expose port if needed
+# Expose port if your app serves on a port
 EXPOSE 8080
 
-# Run the built JAR (adjust the name if needed)
-CMD ["java", "-jar", "build/libs/app.jar"]
+# Run the jar
+CMD ["java", "-jar", "app.jar"]
