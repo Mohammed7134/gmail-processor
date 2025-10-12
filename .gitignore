@@ -1,0 +1,69 @@
+# Gradle build files
+/build/
+/out/
+/.gradle/
+/tokens/
+
+# OS files
+.DS_Store
+
+# IDE files
+*.iml
+.idea/
+*.ipr
+*.iws
+
+# Logs
+*.log
+
+src/main/resources/credentials.json
+# =========================================================
+# Java / Gradle build ignores
+# =========================================================
+.gradle/
+build/
+out/
+**/build/
+**/out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# =========================================================
+# Application specific
+# =========================================================
+app/tokens/
+app/src/main/resources/credentials.json
+tokens/
+*.class
+*.jar
+*.war
+*.ear
+
+# =========================================================
+# Logs and temp files
+# =========================================================
+*.log
+*.tmp
+*.bak
+
+# =========================================================
+# IDE and editor settings
+# =========================================================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VSCode
+.vscode/
+
+# =========================================================
+# OS files
+# =========================================================
+.DS_Store
+Thumbs.db
+
+# =========================================================
+# Docker (optional)
+# =========================================================
+*.pid
