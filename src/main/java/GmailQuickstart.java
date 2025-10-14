@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
@@ -51,6 +52,10 @@ import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import jakarta.mail.util.ByteArrayDataSource;
+
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.lang.Thread;
 
 public class GmailQuickstart {
     private static final Logger logger = Logger.getLogger(GmailQuickstart.class.getName());
@@ -165,6 +170,10 @@ public class GmailQuickstart {
             }
         }
 
+        logger.info("Waking the API up...");
+         wakeUpRenderService(apiEndpoint);
+        try { Thread.sleep(8000); } catch (InterruptedException ignored) {}
+
         logger.info("Sending files to external API...");
         String htmlContent = callCustomApiWithMultipleFiles(apiEndpoint, ExpiriesFile, DetailedFile, BreifFile, RequestedFile, logger);
 
@@ -277,4 +286,20 @@ public class GmailQuickstart {
         }
         return null;
     }
+    private static void wakeUpRenderService(String apiEndpoint) {
+        try {
+            System.out.println("Waking up Render API...");
+            URL url = new URL(apiEndpoint + "/health");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestMethod("GET");
+            int responseCode = conn.getResponseCode();
+            System.out.println("Wake-up response: " + responseCode);
+            conn.disconnect();
+        } catch (Exception e) {
+            System.out.println("Warning: Failed to wake up Render service (maybe still starting up). Continuing...");
+        }
+    }
+
 }
