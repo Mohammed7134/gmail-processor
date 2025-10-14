@@ -101,6 +101,10 @@ public class GmailQuickstart {
         // === Load stored credential silently ===
         Credential credential = flow.loadCredential("user");
         if (credential == null) {
+            System.out.println("DEBUG: Writing decoded token file to " + tokenFile.getAbsolutePath());
+            System.out.println("DEBUG: File exists after write? " + tokenFile.exists());
+            System.out.println("DEBUG: File size = " + (tokenFile.exists() ? tokenFile.length() : 0));
+
             throw new RuntimeException("Failed to load Gmail credentials — check GMAIL_TOKEN_BASE64!");
         }
 
