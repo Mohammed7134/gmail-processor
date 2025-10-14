@@ -70,30 +70,43 @@ public class GmailQuickstart {
     private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
 
     private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        // Before:
-        // InputStream in = GmailQuickstart.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
-
-        // After:
+        // === Load client credentials ===
         String base64Creds = System.getenv("GMAIL_CREDENTIALS_BASE64");
         if (base64Creds == null || base64Creds.isEmpty()) {
             throw new RuntimeException("GMAIL_CREDENTIALS_BASE64 env variable not set!");
         }
-        byte[] decodedBytes = Base64.getDecoder().decode(base64Creds);
-        InputStream in = new ByteArrayInputStream(decodedBytes);
-        if (in == null) {
-            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
-        }
+        byte[] decodedCreds = Base64.getDecoder().decode(base64Creds);
+        InputStream in = new ByteArrayInputStream(decodedCreds);
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
+        // === Initialize authorization flow ===
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
 
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        // === Create token directory and load saved token ===
+        File tokenFile = new File(TOKENS_DIRECTORY_PATH + "/StoredCredential");
+        if (!tokenFile.exists()) {
+            String base64Token = System.getenv("GMAIL_TOKEN_BASE64");
+            if (base64Token == null || base64Token.isEmpty()) {
+                throw new RuntimeException("GMAIL_TOKEN_BASE64 env variable not set, and no local token found!");
+            }
+            byte[] decodedToken = Base64.getDecoder().decode(base64Token);
+            tokenFile.getParentFile().mkdirs();
+            Files.write(tokenFile.toPath(), decodedToken);
+        }
+
+        // === Load stored credential silently ===
+        Credential credential = flow.loadCredential("user");
+        if (credential == null) {
+            throw new RuntimeException("Failed to load Gmail credentials — check GMAIL_TOKEN_BASE64!");
+        }
+
+        return credential;
     }
+
 
     public static void main(String... args) throws IOException, GeneralSecurityException {
         String apiEndpoint = "https://tabula-java.onrender.com/process-all";
