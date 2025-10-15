@@ -27,11 +27,14 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.auth.oauth2.BearerToken;
+import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -44,6 +47,7 @@ import com.google.api.services.gmail.model.MessagePart;
 import com.google.api.services.gmail.model.MessagePartBody;
 import com.google.api.services.gmail.model.MessagePartHeader;
 import com.google.api.services.gmail.model.ModifyMessageRequest;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 
 import jakarta.activation.DataHandler;
 import jakarta.mail.Multipart;
@@ -55,6 +59,7 @@ import jakarta.mail.internet.MimeMultipart;
 import jakarta.mail.util.ByteArrayDataSource;
 
 public class GmailQuickstart {
+    private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
     private static final Logger logger = Logger.getLogger(GmailQuickstart.class.getName());
     private static final String APPLICATION_NAME = "Gmail API Java Quickstart";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
@@ -65,53 +70,54 @@ public class GmailQuickstart {
         GmailScopes.GMAIL_READONLY
     );
     private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        GoogleClientSecrets clientSecrets;
+        // 1️⃣ Try environment variables (Render / production)
+        String clientId = System.getenv("GMAIL_CLIENT_ID");
+        String clientSecret = System.getenv("GMAIL_CLIENT_SECRET");
+        String refreshToken = System.getenv("GMAIL_REFRESH_TOKEN");
+        if (clientId != null && clientSecret != null && refreshToken != null) {
+            System.out.println("INFO: Using environment variables for Gmail credentials.");
 
-        // 🟩 1. Try loading from environment (for cloud)
-        String base64Creds = System.getenv("GMAIL_CREDENTIALS_BASE64");
-        if (base64Creds != null && !base64Creds.isEmpty()) {
-            System.out.println("INFO: Loading Gmail credentials from environment...");
-            byte[] decodedBytes = Base64.getDecoder().decode(base64Creds);
-            InputStream in = new ByteArrayInputStream(decodedBytes);
-            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-        } else {
-            // 🟦 2. Fallback to local file (for development)
-            System.out.println("INFO: Loading Gmail credentials from local file...");
-            InputStream in = GmailQuickstart.class.getResourceAsStream("/credentials.json");
-            if (in == null) throw new FileNotFoundException("credentials.json not found in resources!");
-            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+            // Modern approach using GoogleCredentials
+           GoogleCredential credential = new GoogleCredential.Builder()
+                .setTransport(HTTP_TRANSPORT)
+                .setJsonFactory(JSON_FACTORY)
+                .setClientSecrets(clientId, clientSecret)
+                .build()
+                .setRefreshToken(refreshToken);
+
+            // Wrap in Credential object expected by Gmail API (if using older client library)
+            return new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
+                    .setTransport(HTTP_TRANSPORT)
+                    .setJsonFactory(JSON_FACTORY)
+                    .setClientAuthentication(new ClientParametersAuthentication(clientId, clientSecret))
+                    .build()
+                    .setRefreshToken(refreshToken);
         }
 
-        // 🟨 3. Build authorization flow (shared for both)
+        // 2️⃣ Fallback for local development (unchanged)
+        System.out.println("INFO: Using local OAuth flow for Gmail credentials.");
+        InputStream in = GmailQuickstart.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
+        if (in == null) {
+            throw new FileNotFoundException("Local credentials file not found: " + CREDENTIALS_FILE_PATH);
+        }
+
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
+        System.out.println("GMAIL_CLIENT_ID=" + clientSecrets.getInstalled().getClientId());
+        System.out.println("GMAIL_CLIENT_SECRET=" + clientSecrets.getInstalled().getClientSecret());
 
-        // 🟧 4. If token is provided via environment (for cloud deploys)
-        String base64Token = System.getenv("GMAIL_TOKEN_BASE64");
-        if (base64Token != null && !base64Token.isEmpty()) {
-            System.out.println("INFO: Loading Gmail token from environment...");
-            File tokenDir = new File(TOKENS_DIRECTORY_PATH);
-            if (!tokenDir.exists()) tokenDir.mkdirs();
-            File tokenFile = new File(tokenDir, "StoredCredential");
-            Files.write(tokenFile.toPath(), Base64.getDecoder().decode(base64Token));
-        }
 
-        // 🟥 5. Handle authorization (only needed once if no token stored)
         LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+        // return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-
-        // 🟩 6. Print refresh token once (so you can save it to env for cloud use)
-        if (credential.getRefreshToken() != null) {
-            System.out.println("✅ Gmail refresh token obtained! Save this for cloud env (GMAIL_TOKEN_BASE64).");
-            System.out.println("Refresh token: " + credential.getRefreshToken());
-        } else {
-            System.out.println("ℹ️ Using stored Gmail credentials (no new refresh token).");
-        }
-
+        System.out.println("GMAIL_REFRESH_TOKEN="+ credential.getRefreshToken());
         return credential;
+
     }
 
 
