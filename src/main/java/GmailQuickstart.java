@@ -87,7 +87,6 @@ public class GmailQuickstart {
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
-                .setApprovalPrompt("force")
                 .build();
 
         // 🟧 4. If token is provided via environment (for cloud deploys)
