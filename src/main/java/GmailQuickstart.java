@@ -58,12 +58,23 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import jakarta.mail.util.ByteArrayDataSource;
 
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
+import com.google.api.client.auth.oauth2.BearerToken;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+
+import java.io.IOException;
+import java.util.Collections;
+import com.google.api.client.http.GenericUrl;
+
 public class GmailQuickstart {
     private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
     private static final Logger logger = Logger.getLogger(GmailQuickstart.class.getName());
     private static final String APPLICATION_NAME = "Gmail API Java Quickstart";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
+    private static final String TOKEN_SERVER_URL = "https://oauth2.googleapis.com/token";
+
     private static final List<String> SCOPES = List.of(
         GmailScopes.GMAIL_SEND,
         GmailScopes.GMAIL_MODIFY,
@@ -86,12 +97,18 @@ public class GmailQuickstart {
                 .setRefreshToken(refreshToken);
 
             // Wrap in Credential object expected by Gmail API (if using older client library)
-            return new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
-                    .setTransport(HTTP_TRANSPORT)
+           try {
+                return new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
+                    .setTransport(GoogleNetHttpTransport.newTrustedTransport())
                     .setJsonFactory(JSON_FACTORY)
                     .setClientAuthentication(new ClientParametersAuthentication(clientId, clientSecret))
+                    .setTokenServerUrl(new GenericUrl("https://oauth2.googleapis.com/token"))
                     .build()
                     .setRefreshToken(refreshToken);
+            } catch (GeneralSecurityException e) {
+                throw new IOException("Failed to initialize secure HTTP transport", e);
+            }
+
         }
 
         // 2️⃣ Fallback for local development (unchanged)
