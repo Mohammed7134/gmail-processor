@@ -1,3 +1,6 @@
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -138,163 +141,8 @@ public class GmailQuickstart {
     }
 
 
-
-
-    // public static void main(String... args) throws IOException, GeneralSecurityException {
-    //     String apiEndpoint = "https://tabula-java.onrender.com/process-all";
-    //     if (apiEndpoint == null || apiEndpoint.isEmpty()) {
-    //         logger.severe("API endpoint is not set.");
-    //     }
-
-    //     final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-    //     Gmail service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
-    //             .setApplicationName(APPLICATION_NAME)
-    //             .build();
-
-    //     String user = "me";
-    //     ListMessagesResponse messagesResponse = service.users().messages()
-    //             .list(user)
-    //             .setQ("subject:\"Talabiya Processor\" is:unread")
-    //             .execute();
-
-    //     List<com.google.api.services.gmail.model.Message> messages = messagesResponse.getMessages();
-    //     if (messages == null || messages.isEmpty()) {
-    //         System.out.println("No unread emails found with subject 'Talabiya Processor'.");
-    //         return;
-    //     }
-
-    //     System.out.println("Found " + messages.size() + " unread email(s) with subject 'Talabiya Processor'.");
-
-    //     File ExpiriesFile = null;
-    //     File DetailedFile = null;
-    //     File BreifFile = null;
-    //     File RequestedFile = null;
-    //     com.google.api.services.gmail.model.Message messageTitle = null;
-
-    //     for (com.google.api.services.gmail.model.Message msg : messages) {
-    //         com.google.api.services.gmail.model.Message message =
-    //                 service.users().messages().get(user, msg.getId()).setFormat("full").execute();
-    //         messageTitle = message;
-
-    //         List<MessagePart> parts = message.getPayload().getParts();
-    //         if (parts != null) {
-    //             for (MessagePart part : parts) {
-    //                 String filename = part.getFilename();
-    //                 if (filename != null && !filename.isEmpty()) {
-    //                     System.out.println("Attachment found: " + filename);
-    //                     try {
-    //                         MessagePartBody attachmentBody = service.users().messages().attachments()
-    //                                 .get("me", message.getId(), part.getBody().getAttachmentId())
-    //                                 .execute();
-
-    //                         byte[] fileData = Base64.getUrlDecoder().decode(attachmentBody.getData());
-    //                         File tempFile = Files.createTempFile("attachment_", "_" + filename).toFile();
-
-    //                         try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-    //                             fos.write(fileData);
-    //                         }
-
-    //                         logger.info("Saved attachment: " + tempFile.getAbsolutePath());
-    //                         String name = filename.toLowerCase();
-
-    //                         if (name.contains("expiries")) {
-    //                             ExpiriesFile = tempFile;
-    //                         } else if (name.contains("detailed")) {
-    //                             DetailedFile = tempFile;
-    //                         } else if (name.contains("breif")) {
-    //                             BreifFile = tempFile;
-    //                         } else if (name.contains("requested")) {
-    //                             RequestedFile = tempFile;
-    //                         }
-
-    //                     } catch (IOException e) {
-    //                         logger.log(Level.SEVERE, "Error writing attachment to file", e);
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     logger.info("Waking the API up...");
-    //      wakeUpRenderService(apiEndpoint);
-    //     try { Thread.sleep(8000); } catch (InterruptedException ignored) {}
-
-    //     logger.info("Sending files to external API...");
-    //     String htmlContent = callCustomApiWithMultipleFiles(apiEndpoint, ExpiriesFile, DetailedFile, BreifFile, RequestedFile, logger);
-
-    //     if (htmlContent != null) {
-    //         logger.info("Got HTML content from API, preparing reply...");
-
-    //         String to = messageTitle.getPayload().getHeaders().stream()
-    //                 .filter(h -> h.getName().equalsIgnoreCase("From"))
-    //                 .map(MessagePartHeader::getValue)
-    //                 .findFirst()
-    //                 .orElse(null);
-
-    //         if (to == null) {
-    //             logger.warning("No 'From' header found — cannot send reply.");
-    //         } else {
-    //             try {
-    //                 Properties props = new Properties();
-    //                 Session session = Session.getDefaultInstance(props, null);
-
-    //                 MimeMessage mimeMessage = new MimeMessage(session);
-    //                 mimeMessage.setFrom(new InternetAddress("me"));
-    //                 mimeMessage.addRecipient(jakarta.mail.Message.RecipientType.TO, new InternetAddress(to));
-    //                 mimeMessage.setSubject("Processed Catalogue");
-
-    //                 Multipart multipart = new MimeMultipart();
-
-    //                 MimeBodyPart htmlPart = new MimeBodyPart();
-    //                 htmlPart.setContent(htmlContent, "text/html; charset=utf-8");
-    //                 multipart.addBodyPart(htmlPart);
-
-    //                 MimeBodyPart attachmentPart = new MimeBodyPart();
-    //                 String fileName = "processed_catalogue.html";
-    //                 byte[] htmlBytes = htmlContent.getBytes(StandardCharsets.UTF_8);
-    //                 jakarta.activation.DataSource source = new ByteArrayDataSource(htmlBytes, "text/html");
-    //                 attachmentPart.setDataHandler(new DataHandler(source));
-    //                 attachmentPart.setFileName(fileName);
-    //                 multipart.addBodyPart(attachmentPart);
-
-    //                 mimeMessage.setContent(multipart);
-
-    //                 ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-    //                 mimeMessage.writeTo(buffer);
-    //                 String encodedEmail = Base64.getUrlEncoder().encodeToString(buffer.toByteArray());
-
-    //                 com.google.api.services.gmail.model.Message replyMessage = new com.google.api.services.gmail.model.Message();
-    //                 replyMessage.setRaw(encodedEmail);
-
-    //                 service.users().messages().send("me", replyMessage).execute();
-    //                 logger.info("Reply sent successfully with attachment: " + fileName);
-
-    //             } catch (Exception e) {
-    //                 logger.log(Level.SEVERE, "Failed to send reply email", e);
-    //             }
-    //         }
-    //     }
-
-    //     try {
-    //         ModifyMessageRequest mods = new ModifyMessageRequest().setRemoveLabelIds(Collections.singletonList("UNREAD"));
-    //         service.users().messages().modify("me", messageTitle.getId(), mods).execute();
-    //         logger.info("Marked original message as read.");
-    //     } catch (Exception e) {
-    //         logger.warning("Failed to mark message as read: " + e.getMessage());
-    //     }
-
-    //     File[] tempFiles = {ExpiriesFile, DetailedFile, BreifFile};
-    //     for (File tempFile : tempFiles) {
-    //         if (tempFile != null && tempFile.exists()) {
-    //             if (tempFile.delete()) {
-    //                 logger.info("Deleted temp file: " + tempFile.getAbsolutePath());
-    //             } else {
-    //                 logger.warning("Failed to delete temp file: " + tempFile.getAbsolutePath());
-    //             }
-    //         }
-    //     }
-    // }
     public static void main(String... args) throws IOException, GeneralSecurityException {
+        startDummyServer();
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
         final Gmail service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
                 .setApplicationName(APPLICATION_NAME)
@@ -334,9 +182,6 @@ public class GmailQuickstart {
             }
         }
     }
-/**
- * Send Reply Email
- */
 
     /**
      * Extracted main processing logic for better readability.
@@ -516,6 +361,18 @@ public class GmailQuickstart {
         } catch (Exception e) {
             System.out.println("Warning: Failed to wake up Render service (maybe still starting up). Continuing...");
         }
+    }
+
+    private static void startDummyServer() throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        server.createContext("/", exchange -> {
+            String response = "Service is alive!";
+            exchange.sendResponseHeaders(200, response.length());
+            exchange.getResponseBody().write(response.getBytes());
+            exchange.close();
+        });
+        server.start();
+        System.out.println("Listening on port 8080...");
     }
 
 }
