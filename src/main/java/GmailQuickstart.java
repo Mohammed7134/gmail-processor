@@ -263,7 +263,7 @@ public class GmailQuickstart {
 
                     MimeBodyPart htmlPart = new MimeBodyPart();
                     htmlPart.setContent(htmlContent, "text/html; charset=utf-8");
-                    multipart.addBodyPart(htmlPart);
+                    // multipart.addBodyPart(htmlPart);
 
                     MimeBodyPart attachmentPart = new MimeBodyPart();
                     String fileName = "processed_catalogue.html";
