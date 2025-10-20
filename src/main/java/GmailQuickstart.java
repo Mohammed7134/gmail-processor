@@ -189,7 +189,7 @@ public class GmailQuickstart {
     private static void processMessages(Gmail service, String user, List<com.google.api.services.gmail.model.Message> messages, String apiEndpoint) throws IOException {
         File ExpiriesFile = null;
         File DetailedFile = null;
-        File BreifFile = null;
+        File briefFile = null;
         File RequestedFile = null;
         com.google.api.services.gmail.model.Message messageTitle = null;
 
@@ -221,7 +221,7 @@ public class GmailQuickstart {
 
                             if (name.contains("expiries")) ExpiriesFile = tempFile;
                             else if (name.contains("detailed")) DetailedFile = tempFile;
-                            else if (name.contains("breif")) BreifFile = tempFile;
+                            else if (name.contains("brief")) briefFile = tempFile;
                             else if (name.contains("requested")) RequestedFile = tempFile;
 
                         } catch (IOException e) {
@@ -237,7 +237,7 @@ public class GmailQuickstart {
         try { Thread.sleep(8000); } catch (InterruptedException ignored) {}
 
         logger.info("Sending files to external API...");
-        String htmlContent = callCustomApiWithMultipleFiles(apiEndpoint, ExpiriesFile, DetailedFile, BreifFile, RequestedFile, logger);
+        String htmlContent = callCustomApiWithMultipleFiles(apiEndpoint, ExpiriesFile, DetailedFile, briefFile, RequestedFile, logger);
 
         if (htmlContent != null && messageTitle != null) {
 
@@ -298,7 +298,7 @@ public class GmailQuickstart {
             }
         }
 
-        File[] tempFiles = {ExpiriesFile, DetailedFile, BreifFile};
+        File[] tempFiles = {ExpiriesFile, DetailedFile, briefFile};
         for (File tempFile : tempFiles) {
             if (tempFile != null && tempFile.exists()) {
                 if (tempFile.delete()) {
@@ -312,7 +312,7 @@ public class GmailQuickstart {
     
 
     private static String callCustomApiWithMultipleFiles(String apiEndpoint, File expiriesFile, File detailedFile,
-                                                         File breifFile, File requestedFile, Logger logger) {
+                                                         File briefFile, File requestedFile, Logger logger) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost uploadRequest = new HttpPost(apiEndpoint);
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -321,8 +321,8 @@ public class GmailQuickstart {
                 builder.addBinaryBody("expiries", expiriesFile, ContentType.APPLICATION_OCTET_STREAM, expiriesFile.getName());
             if (detailedFile != null)
                 builder.addBinaryBody("detailed", detailedFile, ContentType.APPLICATION_OCTET_STREAM, detailedFile.getName());
-            if (breifFile != null)
-                builder.addBinaryBody("breif", breifFile, ContentType.APPLICATION_OCTET_STREAM, breifFile.getName());
+            if (briefFile != null)
+                builder.addBinaryBody("brief", briefFile, ContentType.APPLICATION_OCTET_STREAM, briefFile.getName());
             if (requestedFile != null)
                 builder.addBinaryBody("requested", requestedFile, ContentType.APPLICATION_OCTET_STREAM, requestedFile.getName());
 
