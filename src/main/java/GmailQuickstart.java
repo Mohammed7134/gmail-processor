@@ -128,6 +128,7 @@ public class GmailQuickstart {
                 .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
+                
         System.out.println("GMAIL_CLIENT_ID=" + clientSecrets.getInstalled().getClientId());
         System.out.println("GMAIL_CLIENT_SECRET=" + clientSecrets.getInstalled().getClientSecret());
 
@@ -158,7 +159,7 @@ public class GmailQuickstart {
 
                 ListMessagesResponse messagesResponse = service.users().messages()
                         .list(user)
-                        .setQ("subject:\"Talabiya Processor\" is:unread")
+                        .setQ("(subject:\"Talabiya Processor\" OR subject:\"Urgent Talabiya Processor\") is:unread")
                         .execute();
 
                 List<com.google.api.services.gmail.model.Message> messages = messagesResponse.getMessages();
@@ -191,12 +192,20 @@ public class GmailQuickstart {
         File DetailedFile = null;
         File briefFile = null;
         File RequestedFile = null;
+        boolean urgent = false;
         com.google.api.services.gmail.model.Message messageTitle = null;
 
         for (com.google.api.services.gmail.model.Message msg : messages) {
             com.google.api.services.gmail.model.Message message =
                     service.users().messages().get(user, msg.getId()).setFormat("full").execute();
             messageTitle = message;
+
+            String subject = msg.getPayload().getHeaders().stream()
+                .filter(h -> "Subject".equalsIgnoreCase(h.getName()))
+                .map(h -> h.getValue())
+                .findFirst()
+                .orElse("");
+            urgent = subject.toLowerCase().contains("urgent");
 
             List<MessagePart> parts = message.getPayload().getParts();
             if (parts != null) {
@@ -237,7 +246,7 @@ public class GmailQuickstart {
         try { Thread.sleep(8000); } catch (InterruptedException ignored) {}
 
         logger.info("Sending files to external API...");
-        String htmlContent = callCustomApiWithMultipleFiles(apiEndpoint, ExpiriesFile, DetailedFile, briefFile, RequestedFile, logger);
+        String htmlContent = callCustomApiWithMultipleFiles(apiEndpoint, ExpiriesFile, DetailedFile, briefFile, RequestedFile, urgent, logger);
 
         if (htmlContent != null && messageTitle != null) {
 
@@ -312,7 +321,7 @@ public class GmailQuickstart {
     
 
     private static String callCustomApiWithMultipleFiles(String apiEndpoint, File expiriesFile, File detailedFile,
-                                                         File briefFile, File requestedFile, Logger logger) {
+                                                         File briefFile, File requestedFile, boolean urgent, Logger logger) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost uploadRequest = new HttpPost(apiEndpoint);
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -325,6 +334,8 @@ public class GmailQuickstart {
                 builder.addBinaryBody("brief", briefFile, ContentType.APPLICATION_OCTET_STREAM, briefFile.getName());
             if (requestedFile != null)
                 builder.addBinaryBody("requested", requestedFile, ContentType.APPLICATION_OCTET_STREAM, requestedFile.getName());
+            if (urgent)
+                builder.addTextBody("urgent", String.valueOf(urgent));
 
             HttpEntity multipart = builder.build();
             uploadRequest.setEntity(multipart);

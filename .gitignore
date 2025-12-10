@@ -13,6 +13,8 @@ tokens/
 app/tokens/
 src/main/resources/credentials.json
 app/src/main/resources/credentials.json
+src/main/resources/old-credentials.json
+ap/src/main/resources/old-credentials.json
 
 # =========================================================
 # IDE / editor files
