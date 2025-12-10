@@ -12,7 +12,7 @@ RUN gradle clean shadowJar --no-daemon
 # =========================================================
 # -------- Stage 2: Create lightweight runtime image --------
 # =========================================================
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 COPY --from=builder /app/build/libs/*-all.jar app.jar
