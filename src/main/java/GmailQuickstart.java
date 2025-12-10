@@ -196,50 +196,60 @@ public class GmailQuickstart {
         com.google.api.services.gmail.model.Message messageTitle = null;
 
         for (com.google.api.services.gmail.model.Message msg : messages) {
-            com.google.api.services.gmail.model.Message message =
-                    service.users().messages().get(user, msg.getId()).setFormat("full").execute();
-            messageTitle = message;
+    // Fetch the full message once
+    com.google.api.services.gmail.model.Message message =
+            service.users().messages().get(user, msg.getId()).setFormat("full").execute();
+    messageTitle = message;
 
-            String subject = msg.getPayload().getHeaders().stream()
-                .filter(h -> "Subject".equalsIgnoreCase(h.getName()))
-                .map(h -> h.getValue())
-                .findFirst()
-                .orElse("");
-            urgent = subject.toLowerCase().contains("urgent");
+    // Safety check for null payload/headers
+    if (message.getPayload() == null || message.getPayload().getHeaders() == null) {
+        logger.warning("Skipping message " + msg.getId() + " because payload is null");
+        continue;
+    }
 
-            List<MessagePart> parts = message.getPayload().getParts();
-            if (parts != null) {
-                for (MessagePart part : parts) {
-                    String filename = part.getFilename();
-                    if (filename != null && !filename.isEmpty()) {
-                        System.out.println("Attachment found: " + filename);
-                        try {
-                            MessagePartBody attachmentBody = service.users().messages().attachments()
-                                    .get("me", message.getId(), part.getBody().getAttachmentId())
-                                    .execute();
+    // Extract subject safely from the full message
+    String subject = message.getPayload().getHeaders().stream()
+            .filter(h -> "Subject".equalsIgnoreCase(h.getName()))
+            .map(MessagePartHeader::getValue)
+            .findFirst()
+            .orElse("");
+    urgent = subject.toLowerCase().contains("urgent");
 
-                            byte[] fileData = Base64.getUrlDecoder().decode(attachmentBody.getData());
-                            File tempFile = Files.createTempFile("attachment_", "_" + filename).toFile();
+    // Process attachments
+    List<MessagePart> parts = message.getPayload().getParts();
+    if (parts != null) {
+        for (MessagePart part : parts) {
+            String filename = part.getFilename();
+            if (filename != null && !filename.isEmpty()) {
+                System.out.println("Attachment found: " + filename);
+                try {
+                    MessagePartBody attachmentBody = service.users().messages().attachments()
+                            .get(user, message.getId(), part.getBody().getAttachmentId())
+                            .execute();
 
-                            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                                fos.write(fileData);
-                            }
+                    byte[] fileData = Base64.getUrlDecoder().decode(attachmentBody.getData());
+                    File tempFile = Files.createTempFile("attachment_", "_" + filename).toFile();
 
-                            logger.info("Saved attachment: " + tempFile.getAbsolutePath());
-                            String name = filename.toLowerCase();
-
-                            if (name.contains("expiries")) ExpiriesFile = tempFile;
-                            else if (name.contains("detailed")) DetailedFile = tempFile;
-                            else if (name.contains("brief")) briefFile = tempFile;
-                            else if (name.contains("requested")) RequestedFile = tempFile;
-
-                        } catch (IOException e) {
-                            logger.log(Level.SEVERE, "Error writing attachment to file", e);
-                        }
+                    try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                        fos.write(fileData);
                     }
+
+                    logger.info("Saved attachment: " + tempFile.getAbsolutePath());
+                    String name = filename.toLowerCase();
+
+                    if (name.contains("expiries")) ExpiriesFile = tempFile;
+                    else if (name.contains("detailed")) DetailedFile = tempFile;
+                    else if (name.contains("brief")) briefFile = tempFile;
+                    else if (name.contains("requested")) RequestedFile = tempFile;
+
+                } catch (IOException e) {
+                    logger.log(Level.SEVERE, "Error writing attachment to file", e);
                 }
             }
         }
+    }
+}
+
 
         logger.info("Waking the API up...");
         wakeUpRenderService(apiEndpoint);
